@@ -1,0 +1,17 @@
+-- ADMIN OPTION for granting object permissions (not roles...) applies through inheritance as well as set
+-- Gina the Fixed-Ops Manager can administer both technicians and managers
+-- Manager is immediately inherited
+-- Techicians requires a set to advisors first but then it is inherited
+\if :is_su
+    SELECT format('CREATE USER u8_gina_%s;', :'ctx') \gexec
+    SELECT format('CREATE GROUP g8a_general_manager_%s;', :'ctx') \gexec
+    SELECT format('CREATE GROUP g8b_fixedops_manager_%s;', :'ctx') \gexec
+    SELECT format('CREATE GROUP g8c_service_manager_%s;', :'ctx') \gexec
+    SELECT format('CREATE GROUP g8d_service_advisor_%s;', :'ctx') \gexec
+    SELECT format('CREATE GROUP g8e_service_tech_%s;', :'ctx') \gexec
+    SELECT format('GRANT g8a_general_manager_%1$s TO u8_gina_%1$s WITH SET FALSE;', :'ctx') \gexec
+    SELECT format('GRANT g8b_fixedops_manager_%1$s TO g8a_general_manager_%1$s WITH SET FALSE, ADMIN OPTION;', :'ctx') \gexec
+    SELECT format('GRANT g8c_service_manager_%1$s TO g8b_fixedops_manager_%1$s WITH SET FALSE;', :'ctx') \gexec
+    SELECT format('GRANT g8d_service_advisor_%1$s TO u8_gina_%1$s WITH INHERIT FALSE;', :'ctx') \gexec
+    SELECT format('GRANT g8e_service_tech_%1$s TO g8d_service_advisor_%1$s WITH SET FALSE, ADMIN OPTION;', :'ctx') \gexec
+\endif

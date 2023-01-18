@@ -1,0 +1,12 @@
+                                                                                   Test Result for 02-alice-is-a-service-advisor
+        rolname        |             administration              |         memberof_users          |                   memberof_groups                    |              member_users               | member_groups 
+-----------------------+-----------------------------------------+---------------------------------+------------------------------------------------------+-----------------------------------------+---------------
+ g2_service_advisor_cr | by cr_admin from superuser              |                                 |                                                      | cr_admin via u2_alice_cr/cr_admin (s,i)+| 
+                       |                                         |                                 |                                                      | cr_admin from cr_admin (s,i)           +| 
+                       |                                         |                                 |                                                      | u2_alice_cr from cr_admin (s,i)         | 
+ cr_admin              | Create Role                            +| u2_alice_cr from cr_admin (s,i) | g2_service_advisor_cr via u2_alice_cr/cr_admin (s,i)+|                                         | 
+                       | of u2_alice_cr from superuser          +|                                 | g2_service_advisor_cr from cr_admin (s,i)            |                                         | 
+                       | of g2_service_advisor_cr from superuser |                                 |                                                      |                                         | 
+ u2_alice_cr           | by cr_admin from superuser              |                                 | g2_service_advisor_cr from cr_admin (s,i)            | cr_admin from cr_admin (s,i)            | 
+(3 rows)
+

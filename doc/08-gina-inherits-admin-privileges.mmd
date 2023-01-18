@@ -1,0 +1,17 @@
+---
+title: 08 - Monica the Manager Indirectly
+---
+graph TB
+    admin{Admin}
+    gina((Gina))
+    gm[General Managers]
+    fm[Fixed-Ops Managers]
+    sm[Service Managers]
+    sa[Service Advisors]
+    st[Service Techs]
+    gina--I-->gm
+    gm--A, I-->fm
+    fm--I-->sm
+    sm--S-->sa
+    sa--A, I-->st
+    style admin fill:#FF6699,color:black

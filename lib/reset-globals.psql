@@ -1,0 +1,4 @@
+REVOKE USAGE ON SCHEMA rolegraph FROM :createrole_user_name;
+REVOKE SELECT ON TABLE rolegraph.role_relationship FROM :createrole_user_name;
+REVOKE SELECT ON TABLE rolegraph.role_graph FROM :createrole_user_name;
+DROP ROLE :createrole_user_name;

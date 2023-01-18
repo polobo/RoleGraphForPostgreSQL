@@ -1,0 +1,17 @@
+                                                                      Test Result for 03-advisors-earl-amy-sam-ian
+        rolname        |                administration                 | memberof_users |             memberof_groups              |            member_users            | member_groups 
+-----------------------+-----------------------------------------------+----------------+------------------------------------------+------------------------------------+---------------
+ g3_advisor_admin_su   | by u3_amy_admin_su from superuser            +|                |                                          | u3_ian_admin_su from superuser (i)+| 
+                       | by u3_ian_admin_su from superuser            +|                |                                          | u3_sam_admin_su from superuser (s) | 
+                       | by u3_sam_admin_su from superuser             |                |                                          |                                    | 
+ g3_service_advisor_su | empty by u3_earl_su from superuser            |                |                                          | u3_ian_su from superuser (i)      +| 
+                       |                                               |                |                                          | u3_sam_su from superuser (s)       | 
+ cr_admin              | Create Role                                   |                |                                          |                                    | 
+ u3_amy_admin_su       | of g3_advisor_admin_su from superuser         |                |                                          |                                    | 
+ u3_earl_su            | empty of g3_service_advisor_su from superuser |                |                                          |                                    | 
+ u3_ian_admin_su       | of g3_advisor_admin_su from superuser         |                | g3_advisor_admin_su from superuser (i)   |                                    | 
+ u3_ian_su             |                                               |                | g3_service_advisor_su from superuser (i) |                                    | 
+ u3_sam_admin_su       | of g3_advisor_admin_su from superuser         |                | g3_advisor_admin_su from superuser (s)   |                                    | 
+ u3_sam_su             |                                               |                | g3_service_advisor_su from superuser (s) |                                    | 
+(9 rows)
+

@@ -1,0 +1,16 @@
+---
+title: 02 - Alice is a Service Advisor
+---
+graph TB
+    admin{Admin}
+    alice((Alice))
+    sa[Service Advisors]
+    admin-- A -->alice
+    admin-- A -->sa
+    admin-- S, I -->alice
+    admin-- S, I -->sa
+    alice--S, I-->sa
+    style admin fill:#FF6699,color:black
+    linkStyle 2 stroke:#FF6699
+    linkStyle 3 stroke:#FF6699
+    linkStyle 4 stroke:#FF6699

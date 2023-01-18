@@ -1,0 +1,17 @@
+                                                                                                            Test Result for 05-george-the-gm-broken-links
+         rolname         | administration | memberof_users |                            memberof_groups                            |                        member_users                         |                           member_groups                           
+-------------------------+----------------+----------------+-----------------------------------------------------------------------+-------------------------------------------------------------+-------------------------------------------------------------------
+ g5a_general_manager_su  |                |                | g5b_fixedops_manager_su from superuser (s)                           +| u5_george_su from superuser (s,i)                           | 
+                         |                |                | g5c_service_manager_su via g5b_fixedops_manager_su/superuser (i*)     |                                                             | 
+ g5b_fixedops_manager_su |                |                | g5c_service_manager_su from superuser (i)                             | u5_george_su via g5a_general_manager_su/superuser (s)       | g5a_general_manager_su from superuser (s)
+ g5c_service_manager_su  |                |                | g5d_service_advisor_su from superuser (s)                            +| u5_george_su via g5b_fixedops_manager_su/superuser (i*)[+1] | g5a_general_manager_su via g5b_fixedops_manager_su/superuser (i*)+
+                         |                |                | g5e_service_tech_su via g5d_service_advisor_su/superuser (i*)         |                                                             | g5b_fixedops_manager_su from superuser (i)
+ g5d_service_advisor_su  |                |                | g5e_service_tech_su from superuser (i)                                |                                                             | g5c_service_manager_su from superuser (s)
+ g5e_service_tech_su     |                |                |                                                                       |                                                             | g5c_service_manager_su via g5d_service_advisor_su/superuser (i*) +
+                         |                |                |                                                                       |                                                             | g5d_service_advisor_su from superuser (i)
+ cr_admin                | Create Role    |                |                                                                       |                                                             | 
+ u5_george_su            |                |                | g5a_general_manager_su from superuser (s,i)                          +|                                                             | 
+                         |                |                | g5b_fixedops_manager_su via g5a_general_manager_su/superuser (s)     +|                                                             | 
+                         |                |                | g5c_service_manager_su via g5b_fixedops_manager_su/superuser (i*)[+1] |                                                             | 
+(7 rows)
+

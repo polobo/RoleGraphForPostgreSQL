@@ -1,0 +1,57 @@
+-- The main point of this test suite is to show how relationships are presented when two different paths
+-- exists between the roles.
+
+-- Specifically, paths exist from Service Manager to Service Technician through Service Advisor setup by
+-- both Admin and Green Leader.
+
+-- Green Leader brings Blue Leader in at General Manager and establishes a complete path from there to Managers.
+
+-- Administration of the groups is given to Red Leader by Superuser, but since Admin was also given administration
+-- of the groups they redundantly establish Red Leader as an administrator of Service Managers; thus the newline
+-- delimited listing of "from" roles.
+
+-- Encapsulating the dynamics in a single role-pairing is the relationship between Blue Leader and Service Technician
+-- As shown in the diagram the admin paths both provide set and inherit while the Green Leader path has only set and
+-- only inherit respectively (Blue Leader -> Manager only has a single complete path).
+-- Since there are two hops and two grantors involved after Service Manager there are a total of four (4) unique "via" pathways.
+-- The grantor listed is the final hop, and the [+N] indicates how many intermediate hops are present.
+-- The admin-only path yields i* (inherit only) while the green path ending with an admin intermediate preserves the true inherit.
+-- For the admin-only path preserves both set and inheirt while detouring using the green path results in losing inherit.
+
+-- Looking at the member column further you can see, skimming upward from technician, that what started as 4 paths (with [+2])
+-- becomes 2 paths (and [+1]) and then a single "via" and then the direct "from" link.
+
+-- XXX: Admin has administrator over Service Manager but not Green Leader yet is able to establish an admin+set membership
+--      of Green Leader in Service Managers.
+
+\if :is_su
+    SELECT format('CREATE USER u6_green_leader_%s ;', :'ctx') \gexec
+    SELECT format('CREATE USER u6_blue_leader_%s ;', :'ctx') \gexec
+
+    SELECT format('CREATE GROUP g6a_fixedops_manager_%s ;', :'ctx') \gexec
+    SELECT format('CREATE GROUP g6c_service_manager_%s ;', :'ctx') \gexec
+    SELECT format('CREATE GROUP g6d_service_advisor_%s ;', :'ctx') \gexec
+    SELECT format('CREATE GROUP g6e_service_tech_%s ;', :'ctx') \gexec
+
+    SELECT format('GRANT g6a_fixedops_manager_%1$s TO u6_green_leader_%1$s WITH SET FALSE, INHERIT FALSE, ADMIN OPTION;', :'ctx') \gexec
+    SELECT format('GRANT g6c_service_manager_%1$s TO u6_green_leader_%1$s WITH SET FALSE, INHERIT FALSE, ADMIN OPTION;', :'ctx') \gexec
+    SELECT format('GRANT g6d_service_advisor_%1$s TO u6_green_leader_%1$s WITH SET FALSE, INHERIT FALSE, ADMIN OPTION;', :'ctx') \gexec
+    SELECT format('GRANT g6e_service_tech_%1$s TO u6_green_leader_%1$s WITH SET FALSE, INHERIT FALSE, ADMIN OPTION;', :'ctx') \gexec
+
+    SELECT format('SET ROLE u6_green_leader_%s;', :'ctx') \gexec
+    SELECT format('GRANT g6a_fixedops_manager_%1$s TO u6_blue_leader_%1$s WITH SET TRUE, INHERIT TRUE, ADMIN FALSE;', :'ctx') \gexec
+    SELECT format('GRANT g6c_service_manager_%1$s TO g6a_fixedops_manager_%1$s WITH SET TRUE, INHERIT TRUE, ADMIN FALSE;', :'ctx') \gexec
+    SELECT format('GRANT g6d_service_advisor_%1$s TO g6c_service_manager_%1$s WITH SET TRUE, INHERIT FALSE, ADMIN FALSE;', :'ctx') \gexec
+    SELECT format('GRANT g6e_service_tech_%1$s TO g6d_service_advisor_%1$s WITH SET FALSE, INHERIT TRUE, ADMIN FALSE;', :'ctx') \gexec
+    RESET ROLE;
+
+    SELECT format('GRANT g6c_service_manager_%1$s TO %2$I WITH SET FALSE, INHERIT FALSE, ADMIN OPTION;', :'ctx', :'createrole_user_name') \gexec
+    SELECT format('GRANT g6d_service_advisor_%1$s TO %2$I WITH SET FALSE, INHERIT FALSE, ADMIN OPTION;', :'ctx', :'createrole_user_name') \gexec
+    SELECT format('GRANT g6e_service_tech_%1$s TO %2$I WITH SET FALSE, INHERIT FALSE, ADMIN OPTION;', :'ctx', :'createrole_user_name') \gexec
+\endif
+
+\if :is_cr
+    SELECT format('GRANT g6c_service_manager_su TO u6_green_leader_su WITH SET FALSE, INHERIT FALSE, ADMIN OPTION;', :'ctx') \gexec
+    SELECT format('GRANT g6d_service_advisor_su TO g6c_service_manager_su WITH SET TRUE, INHERIT TRUE, ADMIN FALSE;', :'ctx') \gexec
+    SELECT format('GRANT g6e_service_tech_su TO g6d_service_advisor_su WITH SET TRUE, INHERIT TRUE, ADMIN FALSE;', :'ctx') \gexec
+\endif

@@ -1,0 +1,32 @@
+-- Here we demonstrate the basic presentations for the various grant specification options
+-- We've already demonstrated both set and inherit being possessed.  While admin is segregated
+-- in the presentation here we do show each of three remaining combinations of set/inherit
+-- with and without admin option.
+-- Amy (admin only) holds just an admin option while Earl doesn't hold anything (empty)
+-- Ian holds inherit
+-- Sam holds set
+-- There is a separate service advisor group for the admin and non-admin cases to aid in reading
+-- Also for ease of reading, these are created by the superuser so only the explicit grants below are shown
+
+\if :is_su
+    RESET createrole_self_grant;
+    SELECT format('CREATE ROLE u3_earl_%s LOGIN;', :'ctx') \gexec
+    SELECT format('CREATE ROLE u3_ian_%s LOGIN;', :'ctx') \gexec
+    SELECT format('CREATE ROLE u3_sam_%s LOGIN;', :'ctx') \gexec
+
+    SELECT format('CREATE ROLE u3_amy_admin_%s LOGIN;', :'ctx') \gexec
+    SELECT format('CREATE ROLE u3_ian_admin_%s LOGIN;', :'ctx') \gexec
+    SELECT format('CREATE ROLE u3_sam_admin_%s LOGIN NOINHERIT;', :'ctx') \gexec
+    SELECT format('CREATE ROLE g3_service_advisor_%s NOLOGIN;', :'ctx') \gexec
+
+    SELECT format('GRANT g3_service_advisor_%1$s TO u3_earl_%1$s WITH SET FALSE, INHERIT FALSE, ADMIN FALSE;', :'ctx') \gexec
+    SELECT format('GRANT g3_service_advisor_%1$s TO u3_ian_%1$s WITH SET FALSE, INHERIT TRUE, ADMIN FALSE;', :'ctx') \gexec
+    SELECT format('GRANT g3_service_advisor_%1$s TO u3_sam_%1$s WITH SET TRUE, INHERIT FALSE, ADMIN FALSE;', :'ctx', :'ctx') \gexec
+
+    SELECT format('CREATE ROLE g3_advisor_admin_%s NOLOGIN;', :'ctx') \gexec
+
+    SELECT format('GRANT g3_advisor_admin_%1$s TO u3_amy_admin_%1$s WITH SET FALSE, INHERIT FALSE, ADMIN OPTION;', :'ctx') \gexec
+    SELECT format('GRANT g3_advisor_admin_%1$s TO u3_ian_admin_%1$s WITH SET FALSE, INHERIT TRUE, ADMIN OPTION;', :'ctx') \gexec
+    SELECT format('GRANT g3_advisor_admin_%1$s TO u3_sam_admin_%1$s WITH SET TRUE, INHERIT FALSE, ADMIN OPTION;', :'ctx') \gexec
+
+\endif

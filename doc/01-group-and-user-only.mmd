@@ -1,0 +1,10 @@
+---
+title: 01 - Group and User Only
+---
+graph TB
+    admin{Admin}
+    alice((Alice))
+    sa[Service Advisors]
+    admin-- A, S, I -->alice
+    admin-- A, S, I -->sa
+    style admin fill:#FF6699,color:black

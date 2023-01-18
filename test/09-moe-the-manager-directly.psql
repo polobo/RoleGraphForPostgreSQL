@@ -1,0 +1,14 @@
+-- ADMIN OPTION isn't transitive by itself
+-- Moe the Service Manager directly administers manager, which directly
+-- adminsters advisors, which directly administers techs, but moe,
+-- lacking set/inherit to the other, is not recorded as an administrator
+-- to the others.
+\if :is_su
+    SELECT format('CREATE USER u9_moe_%s NOINHERIT;', :'ctx') \gexec
+    SELECT format('CREATE GROUP g9a_service_manager_%s NOINHERIT;', :'ctx') \gexec
+    SELECT format('CREATE GROUP g9b_service_advisor_%s NOINHERIT;', :'ctx') \gexec
+    SELECT format('CREATE GROUP g9c_service_tech_%s NOINHERIT;', :'ctx') \gexec
+    SELECT format('GRANT g9a_service_manager_%1$s TO u9_moe_%1$s WITH SET FALSE, ADMIN OPTION;', :'ctx') \gexec
+    SELECT format('GRANT g9b_service_advisor_%1$s TO g9a_service_manager_%1$s WITH SET FALSE, ADMIN OPTION;', :'ctx') \gexec
+    SELECT format('GRANT g9c_service_tech_%1$s TO g9b_service_advisor_%1$s WITH SET FALSE, ADMIN OPTION;', :'ctx') \gexec
+\endif

@@ -1,0 +1,5 @@
+\set ON_ERROR_STOP true
+
+-- note: changing these will regress against all expect outputs
+SET client_min_messages TO warning;
+\set createrole_user_name cr_admin

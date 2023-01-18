@@ -1,0 +1,14 @@
+---
+title: 04 - Susan Advisor and Tech
+---
+graph TB
+    admin{Admin}
+    susan((Susan))
+    sm[Service Managers]
+    sa[Service Advisors]
+    st[Service Techs]
+    susan--S-->sa
+    susan--I-->st
+    sm--S, I-->sa
+    sa--A, I-->st
+    style admin fill:#FF6699,color:black

@@ -1,0 +1,13 @@
+---
+title: 09 - Moe the Manager Directly
+---
+graph TB
+    admin{Admin}
+    moe((Moe))
+    sm[Service Managers]
+    sa[Service Advisors]
+    st[Service Techs]
+    moe--A-->sm
+    sm--A-->sa
+    sa--A-->st
+    style admin fill:#FF6699,color:black

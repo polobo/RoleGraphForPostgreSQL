@@ -1,0 +1,33 @@
+---
+title: 06 - Blue Leader Faced With Choices
+---
+graph TB
+    admin{Admin}
+    greens((Green Leader))
+    greena((Green Leader))
+    blue((Blue Leader))
+    fm[Fixed-Ops Managers]
+    sm[Service Managers]
+    sa[Service Advisors]
+    st[Service Techs]
+    all[All Groups via Superuser]
+    admin--A-->all
+    greens--A-->sm
+    greena--A-->all
+    blue--S, I-->fm
+    fm--S, I-->sm
+    sm--S-->sa
+    sa--I-->st
+    sm--S, I-->sa
+    sa--S, I-->st
+    linkStyle 1 stroke:#FF6699
+    linkStyle 7 stroke:#FF6699
+    linkStyle 8 stroke:#FF6699
+    linkStyle 3 stroke:#66FF99
+    linkStyle 4 stroke:#66FF99
+    linkStyle 5 stroke:#66FF99
+    linkStyle 6 stroke:#66FF99
+    style admin fill:#FF6699,color:black
+    style greens fill:#66FF99,color:black
+    style greena fill:#66FF99,color:black
+    style blue fill:#77CCFF,color:black

@@ -1,0 +1,26 @@
+-- George the GM demonstrates, mostly via the group grants, that broken chains of grants
+-- do indeed result in an inability for George to achieve the lower level permissions
+-- in this single-store full-stack graph.
+-- NB: A fixed-ops manager is responsible for both the service and parts departments.
+--     A general (or store) manager is responsible for the entire store on behalf of the owner.
+--     We've already seen the other tiers with Susan.
+-- You can see that the General Manager can only Set to the Fixed-Ops Manager
+-- but they have inherit-only rights of Service Manager.
+-- Both of these are granted to the full member George who is unable to see
+--   neither the advisor nor technician groups.
+
+\if :is_su
+    SELECT format('CREATE ROLE u5_george_%1$s LOGIN NOINHERIT;', :'ctx') \gexec
+
+    SELECT format('CREATE ROLE g5a_general_manager_%1$s NOLOGIN NOINHERIT;', :'ctx') \gexec
+    SELECT format('CREATE ROLE g5b_fixedops_manager_%1$s NOLOGIN NOINHERIT;', :'ctx') \gexec
+    SELECT format('CREATE ROLE g5c_service_manager_%1$s NOLOGIN NOINHERIT;', :'ctx') \gexec
+    SELECT format('CREATE ROLE g5d_service_advisor_%1$s NOLOGIN NOINHERIT;', :'ctx') \gexec
+    SELECT format('CREATE ROLE g5e_service_tech_%1$s NOLOGIN NOINHERIT;', :'ctx') \gexec
+
+    SELECT format('GRANT g5a_general_manager_%1$s TO u5_george_%1$s WITH SET TRUE, INHERIT TRUE;', :'ctx') \gexec
+    SELECT format('GRANT g5b_fixedops_manager_%1$s TO g5a_general_manager_%1$s WITH SET TRUE;', :'ctx') \gexec
+    SELECT format('GRANT g5c_service_manager_%1$s TO g5b_fixedops_manager_%1$s WITH SET FALSE, INHERIT TRUE;', :'ctx') \gexec
+    SELECT format('GRANT g5d_service_advisor_%1$s TO g5c_service_manager_%1$s WITH SET TRUE;', :'ctx') \gexec
+    SELECT format('GRANT g5e_service_tech_%1$s TO g5d_service_advisor_%1$s WITH SET FALSE, INHERIT TRUE;', :'ctx') \gexec
+\endif

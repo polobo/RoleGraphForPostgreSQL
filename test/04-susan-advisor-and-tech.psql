@@ -1,0 +1,25 @@
+-- Now we introduce the corporate hierarchy, where there is an overall service manager, the advisors
+-- who work with the customers to figure out what needs to be done, and the technicians who do the work.
+-- NB: This doesn't reflect a real-life permissions hierarchy but is close enough to be used as a test bed
+-- for a top-middle-bottom descending authority setup.
+
+-- This specific test suite has two particularly important features:
+-- 1) susan is an inherit-only (i*) technician via the set-only grant to advisor.
+--    This is true even though a direct inherit-only grant exists between her and technician.
+--    i.e., Both paths are presented individually and computed in isolation.
+-- 2) susan is recorded as an adminstrator of technicians because while her direct grant does not
+--    include ADMIN OPTION she is able to SET ROLE to advisor and then administer technicians.
+
+\if :is_su
+    RESET createrole_self_grant;
+    SELECT format('CREATE ROLE u4_susan_%s LOGIN NOINHERIT;', :'ctx') \gexec
+
+    SELECT format('CREATE ROLE g4a_service_manager_%s NOLOGIN NOINHERIT;', :'ctx') \gexec
+    SELECT format('CREATE ROLE g4b_service_advisor_%s NOLOGIN NOINHERIT;', :'ctx') \gexec
+    SELECT format('CREATE ROLE g4c_service_tech_%s NOLOGIN NOINHERIT;', :'ctx') \gexec
+
+    SELECT format('GRANT g4c_service_tech_%s TO u4_susan_%s WITH SET FALSE, INHERIT TRUE;', :'ctx', :'ctx') \gexec
+    SELECT format('GRANT g4b_service_advisor_%s TO u4_susan_%s WITH SET TRUE;', :'ctx', :'ctx') \gexec
+    SELECT format('GRANT g4c_service_tech_%s TO g4b_service_advisor_%s WITH SET FALSE, INHERIT TRUE, ADMIN OPTION;', :'ctx', :'ctx') \gexec
+    SELECT format('GRANT g4b_service_advisor_%s TO g4a_service_manager_%s WITH SET TRUE, INHERIT TRUE;', :'ctx', :'ctx') \gexec
+\endif

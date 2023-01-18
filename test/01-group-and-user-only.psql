@@ -1,0 +1,8 @@
+-- Demonstrate what happens when user and group roles are created during the cr and su passes
+-- Specifically, under superuser there are no listed administration relationships while
+-- due to createrole_self_grant and the nature of create role there are admin, set, and inherit
+-- grants from admin to each of the created roles.
+
+SET createrole_self_grant TO set, inherit;
+SELECT format('CREATE ROLE u1_alice_%s LOGIN;', :'ctx') \gexec
+SELECT format('CREATE ROLE g1_service_advisor_%s NOLOGIN;', :'ctx') \gexec

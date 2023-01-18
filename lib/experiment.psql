@@ -1,0 +1,33 @@
+\set suuser vagrant
+\echo 'Role Setup'
+
+CREATE ROLE cr_admin CREATEROLE LOGIN;
+CREATE ROLE su_group NOLOGIN;
+CREATE ROLE su_user LOGIN;
+\c postgres cr_admin
+\echo 'Basic Tests'
+
+\echo 'Error: lacking admin option su_group'
+GRANT su_group TO su_user; -- fails lacking admin on su_group
+
+\c postgres :suuser
+\echo 'Main Setup'
+GRANT su_group TO cr_admin WITH ADMIN OPTION;
+
+\c postgres cr_admin
+\echo 'Admin Tests'
+
+GRANT su_group TO su_user;
+\echo 'Error: lacking admin option on su_user'
+GRANT su_user TO su_group;
+
+\c postgres :suuser
+
+\echo 'Reversion'
+REVOKE su_group FROM su_user GRANTED BY cr_admin;
+REVOKE su_group FROM cr_admin CASCADE;
+
+\echo 'Role Removal'
+DROP ROLE cr_admin;
+DROP ROLE su_group;
+DROP ROLE su_user;

@@ -1,0 +1,15 @@
+-- In test 01 we introduced Alice and the Service Advisor job, here
+-- we see what happens when we make Alice a member of the Service Advisor group.
+-- Additionally, demonstrate the default behavior of createrole_self_grant
+-- in granting set and inherit to admin by itself (since it has admin from superuser).
+
+\if :is_cr
+    SET createrole_self_grant TO set, inherit;
+    SELECT format('CREATE ROLE u2_alice_%1$s LOGIN;', :'ctx') \gexec
+    SELECT format('CREATE ROLE g2_service_advisor_%1$s NOLOGIN;', :'ctx') \gexec
+    SELECT format('GRANT g2_service_advisor_%1$s TO u2_alice_%1$s;', :'ctx') \gexec
+\endif
+
+-- As shown in the visual graph there are now two paths that can be followed from Admin to Advisors
+-- and this is reflected by the pair of service advisor memberof entries, one with a "via" and one
+-- that is direct.

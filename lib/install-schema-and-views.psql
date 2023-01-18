@@ -1,0 +1,428 @@
+DROP SCHEMA IF EXISTS rolegraph CASCADE;
+CREATE SCHEMA rolegraph;
+SET search_path TO rolegraph;
+
+DO $$
+DECLARE
+    -- Some variables to hold dynamic SQL fragments
+    create_role_relationship_view text;
+
+    create_view_role_graph_detail text;
+    role_graph_detail_join_template text;
+
+    role_graph text;
+    role_graph_template text;
+    role_graph_prefix text;
+    role_graph_where_admin text;
+    role_graph_where_privs text;
+    role_graph_having text;
+
+    -- The recursive traversal starts at every role in the system
+    -- so we consider the starting point simply a leaf_node.
+    -- Since the definition of a group is that which has members
+    -- and our traversal follows the membership links we
+    -- use group_node to reflect all traversed-to nodes
+    -- in the graph.  Each produced row is a path from the
+    -- leaf_node to the group_node.
+    leaf_col_name text := 'leaf_node';
+    group_col_name text := 'group_node';
+
+    -- Here we provide column names for the four segments
+    -- of membership-type determined by the orientation
+    -- of the leaf_node-group_node relationship traversal
+    -- as well as their respective node types.
+    col_member_user text := 'member_users';
+    col_member_group text := 'member_groups';
+    col_memberof_user text := 'memberof_users';
+    col_memberof_group text := 'memberof_groups';
+BEGIN
+/************************************************************************************************/
+create_role_relationship_view := format(
+    $sub$
+        CREATE VIEW role_relationship AS
+        WITH RECURSIVE cte_role_relationship AS (
+            -- Select all known roles on the system; we consider every role as a potential
+            -- leaf node for a tree.  Recursively ascend through the tree producing a
+            -- new row relating every parent role encountered to the leaf role that we started from
+            SELECT
+                r.oid AS %1$s,  -- leaf node
+                r.oid::oid AS %2$s, -- The leaf is a member of itself to kick-start tree ascent
+                NULL::oid AS grantor, -- But no one grants this implicit membership
+                0 AS level, -- Start counting real levels at 1 so this bootstrap row gets 0
+                ARRAY[]::oid[] AS via, -- The level also tells us how many node oids (PK from pg_role) are present in this array
+                ARRAY[]::text[] AS via_names, -- Names are nicer for debugging
+                ARRAY[]::text[] AS privs_path, -- Record, at each level, the grants given. From the previous node, the first entry references leaf_node
+                ARRAY[]::text[] AS grantor_path, -- Similar to privs_paths but recording the grantor
+                NULL::boolean AS grant_is_empty, -- flag that all available grants options are false for the current entry
+                NULL::boolean AS got_set, -- gapless set path
+                NULL::boolean AS got_inherit, -- gapless inherit path
+                NULL::boolean AS got_admin, -- gapless admin path
+                NULL::boolean AS got_inherit_via_set, -- allows for gaps filled in by set
+
+                -- Specifies by which methods the privileges given to the group_node are obtainable by the leaf_node.
+                -- s: the leaf role can use one-or-more set commands to assume the group role's privileges
+                -- i: the leaf role inherits the group role's privileges
+                -- i*: the leaf role can use set role to become a role that inherits the group role's privileges
+                --     and does not directly inherit those privileges itself.
+                --     Specifically, one or more of the intermediate nodes has s-only privilege
+                NULL::text AS privs
+            FROM
+                pg_catalog.pg_roles AS r -- Initialize each role present in the cluster as a leaf_node
+            UNION ALL -- The system prevents cycles from being created so no special logic required here to avoid infinite recursion
+            SELECT *,
+                COALESCE(NULLIF( -- Compute privs from the current state of the traversal path
+                       CASE WHEN cb.grant_is_empty THEN '' ELSE '' END
+                    || CASE WHEN cb.got_inherit_via_set THEN 'i*' ELSE '' END
+                    || CASE WHEN cb.got_set THEN 's' ELSE '' END
+                    || CASE WHEN cb.got_set AND cb.got_inherit THEN ',' ELSE '' END
+                    || CASE WHEN cb.got_inherit THEN 'i' ELSE '' END, ''), 'n/a')
+            FROM (
+                SELECT
+                    a.%1$s AS %1$s, -- I am still the leaf
+                    m.roleid AS %2$s, -- And groups (or users) that I am a member of now get evaluated as being potential members in their own right
+                    m.grantor AS grantor,
+                    -- Increment level
+                    a.level + 1 AS level,
+                    -- And append to all of the arrays
+                    a.via || m.roleid AS via,
+                    a.via_names || m.roleid::regrole::text AS via_names,
+                    a.privs_path || (CASE WHEN NOT(m.set_option OR m.inherit_option OR m.admin_option) THEN 'e' ELSE '' END ||
+                                     CASE WHEN m.admin_option THEN 'a' ELSE '' END ||
+                                     CASE WHEN m.set_option THEN 's' ELSE '' END ||
+                                     CASE WHEN m.inherit_option THEN 'i' ELSE '' END) AS privs_path,
+                    a.grantor_path || CASE WHEN m.grantor = 10 THEN 'superuser' ELSE m.grantor::regrole::text END AS grantor_path,
+
+                    -- Compute the new end state from the previous end state and the properties of the grant
+                    NOT(m.set_option OR m.inherit_option OR m.admin_option) AS grant_is_empty,
+                    COALESCE(a.got_set, TRUE) AND m.set_option AS got_set,
+                    COALESCE(a.got_inherit, TRUE) AND m.inherit_option AS got_inherit,
+
+                    -- We consider the leaf as having admin on the target so long as any non-admin-only
+                    -- chain exists between them.
+                    -- TODO: refactor to remove code duplication; will probably end up removing the *
+                    --       from the outer-most query level and maybe add one more query level too...
+                    COALESCE(m.admin_option, FALSE)
+                        AND ((a.level + 1 = 1)
+                             OR
+                             (a.got_set AND m.set_option)
+                             OR
+                             (a.got_inherit AND m.inherit_option)
+                             OR
+                             (  -- duplicated from below for inherit_via_set for the moment
+                                (COALESCE(a.got_inherit_via_set, FALSE) AND m.inherit_option)
+                                OR
+                                (COALESCE(a.got_set, FALSE) AND NOT(COALESCE(a.got_inherit, FALSE))
+                                    AND (not(m.set_option) AND m.inherit_option))
+                             )
+                    ) AS got_admin,
+
+                    -- Once we are getting inherit via set in a path it continues so long as we
+                    -- continue getting inherit.
+                    (COALESCE(a.got_inherit_via_set, FALSE) AND m.inherit_option)
+                    OR
+                    -- using set to get to a parent node but being unable to inherit from it is
+                    -- the definition of starting inherit-via-set.
+                    (COALESCE(a.got_set, FALSE) AND NOT(COALESCE(a.got_inherit, FALSE))
+                    -- to be worth recording, however, the link from the parent to the inbound node
+                    -- must have an inherit privilege to somewhere else since our i-v-s will be to that node.
+                        AND (not(m.set_option) AND m.inherit_option)) AS got_inherit_via_set
+
+                FROM
+                    cte_role_relationship AS a
+                    JOIN pg_catalog.pg_auth_members AS m ON (m.member = a.%2$s) -- The last iteration's group node now becomes a member
+            ) AS cb
+            WHERE
+                (cb.grant_is_empty AND cb.level <= 1) OR -- report empty grant only once, it will never be found in the middle of a path
+                cb.got_set OR
+                cb.got_inherit OR
+                cb.got_inherit_via_set OR
+                cb.got_admin
+        )
+        SELECT * FROM cte_role_relationship;
+    $sub$,
+    leaf_col_name,
+    group_col_name
+);
+
+EXECUTE create_role_relationship_view;
+/*******************************************************************************/
+create_view_role_graph_detail := format($sub$
+CREATE VIEW role_graph_detail AS
+-- This view basically normalizes the raw data, producing a set of
+-- pg_role.oid values for each pg_role.oid value, categorized by whether
+-- the set contains the members of the main role or are roles which the
+-- main row is a member of. Within each set each element's rolcanlogin attribute
+-- is the same and matches whether the column name is suffixed "_group" or "_user".
+SELECT
+    r.oid,
+    r.rolname,
+    CASE WHEN r.rolcanlogin THEN
+        'User'
+    ELSE
+        'Group'
+    END AS role_type,
+    %1$s,
+    %2$s,
+    %3$s,
+    %4$s,
+    r.rolsuper,
+    r.rolcreaterole
+FROM
+    pg_catalog.pg_roles AS r
+$sub$, col_memberof_user, col_memberof_group, col_member_user, col_member_group);
+
+role_graph_detail_join_template := $sub$
+    JOIN LATERAL (
+        -- Compute an array of distinct pg_role.oid values that a given leaf can reach.
+        -- The distinct will be undone during path presentation showing each of the
+        -- ways that each pair of nodes can reach each other.
+        -- We subdivide the result space into four quadrants
+        -- 1) Our leaf is a member whose containers are users
+        -- 2) Our leaf is a member whose containers are groups
+        -- 3) Our leaf is a container whose members are users
+        -- 4) Our leaf is a container whose members are groups
+        -- Input 1 is where our leaf oid resides, which depends on whether it is a member or container
+        -- Input 2 is the other thing
+        SELECT
+            array_agg(DISTINCT a.%2$s ORDER BY a.%2$s) -- output the other thing
+        FROM
+            role_relationship AS a
+            JOIN pg_catalog.pg_roles AS u ON u.oid = a.%2$s -- get the other thing's rolcanlogin
+                AND %4$s u.rolcanlogin -- to decide whether it meets the users/group criteria for the quadrant
+        WHERE
+            a.%1$s = r.oid -- lateral result from the graph scoped to our leaf only
+            AND r.oid <> a.%2$s -- but exclude the implicit level 0 self-membership entry
+
+    -- the relation and output column aliases will need to be unique so make them input parameters as well
+    ) AS %5$s (%3$s) ON TRUE
+$sub$;
+
+-- Now append four explicit joins to the FROM clause, one for each combination noted in the comments above:
+create_view_role_graph_detail := create_view_role_graph_detail || format(role_graph_detail_join_template, leaf_col_name, group_col_name, col_memberof_user, '', 'mou'); -- 1
+create_view_role_graph_detail := create_view_role_graph_detail || format(role_graph_detail_join_template, leaf_col_name, group_col_name, col_memberof_group, 'not', 'mog'); -- 2
+create_view_role_graph_detail := create_view_role_graph_detail || format(role_graph_detail_join_template, group_col_name, leaf_col_name, col_member_user, '', 'mu'); -- 3
+create_view_role_graph_detail := create_view_role_graph_detail || format(role_graph_detail_join_template, group_col_name, leaf_col_name, col_member_group, 'not', 'mg'); -- 4
+--create_view_role_graph_detail := create_view_role_graph_detail || E'';
+
+EXECUTE create_view_role_graph_detail;
+
+/************************************************************************************************/
+
+-- The next three fragments deal with considering the relationships strictly within the context
+-- of whether with admin option is possible.  The base query to compute the relationships
+-- has different presentation requirements when use in this context and so these can
+-- be appended to the in-query string builder in the administration case but left
+-- as the empty string in the general case.
+
+role_graph_prefix := $sub$
+    -- admin prefix of/by preceded by empty if the grant is so
+    -- empty is always going to be level=1 grant reflected
+    -- in both traversal directions
+    CASE WHEN bool_or(grant_instance.grant_is_empty)
+         THEN 'empty '
+         ELSE ''
+    END ||
+    '%1$s ' ||
+$sub$;
+
+role_graph_where_admin := $sub$
+WHERE -- only consider direct with admin option grants, but that were not
+      -- created by the current role, as including those is
+      -- going to be redundant with the fact that such a grant
+      -- by the leaf role required having admin option privilege
+      -- in the first place.
+      (grant_instance.got_admin AND NOT(leaf_node = grantor))
+      OR
+      -- also include present but empty grants in the admin column
+      -- since having a separate column for them seems hard to present
+      -- and picking one of the other four, random.
+      (grant_instance.grant_is_empty)
+$sub$;
+
+-- Also need a usable where clause for non-admin case
+role_graph_where_privs := $sub$
+WHERE grant_instance.got_inherit
+      OR grant_instance.got_set
+      OR grant_instance.got_inherit_via_set
+$sub$;
+/*-----------------------------------------------------------------------------------------------------------------------------*/
+-- Now the general template that will compute a newline separated listing of membership relationships
+-- including grantor information.
+-- We produce four roles:
+-- leaf_role: for a memberof column, leaf_node, for a member column, group_node
+-- other_role: for a memberof column, group_node, for a member column, leaf_node
+-- grant_role: the grantor for a given leaf-other grant
+-- ancestor_role: the role to whom grant_role established the link to group_node
+--    Yes, this entry is non-directional since it is fundamentally based upon
+--    the direction that grant itself, and the tree recursion, happens.
+--    In particular it is only used for "via" which applies whether you
+--    are walking up or down the tree (container/member)
+
+role_graph_template := $sub$
+SELECT
+    -- placeholder for the optional administration prefix (with admin option)
+    %4$s
+        CASE WHEN cardinality(grant_instance.via) > 1
+                -- Since we have arrived here via intermediate memberships we indicate that this membership is indirect
+                -- In the case of a single intermediate step we can simply show the indirect and enabling grant explicitly
+                -- In the case of multiple intermediate steps we indicate how many additional steps are required to get
+                --   to the enabling grant.
+                -- Multiple subtrees can introduce the same membership so we aggregate; specifically newline with padding.
+                THEN format('%%I via %%s',
+                        other_role.rolname,
+                        string_agg(
+                            quote_ident(ancestor_role.rolname) ||
+                                E'/' ||  -- used for consistency with object grant representation of grantor
+                                quote_ident(CASE WHEN grant_role.rolname::regrole = 10 THEN 'superuser' ELSE grant_role.rolname END) ||
+                                -- When looking at admin we don't care about privs and so we don't
+                                -- show them here.  A direct grant has to be with admin option
+                                -- and all indirects come in via set.
+                                -- This is inside the string_agg since each node
+                                -- is going to have its own privs as the levels are traversed.
+                                CASE WHEN (%7$L)::boolean -- admin cell output flag
+                                     THEN ''
+                                     ELSE ' (' || grant_instance.privs || ')'
+                                END ||
+                                CASE WHEN grant_instance.level > 2
+                                    THEN '[+' || grant_instance.level - 2 || ']'
+                                    ELSE ''
+                                END,
+                            E'\n' || repeat(' ', length(other_role.rolname) + length(' via ') + CASE WHEN (%7$L)::boolean THEN 3 ELSE 0 END)  -- pad after the newline so each grantor starts at the same place
+                            ORDER BY grant_instance.level, grant_instance.grantor, grant_instance.grantor_path
+                        )
+                     )
+                -- Direct grants are simply represented as the membership from grantor
+                -- Nothing comes before the membership as the column in which the link is presented determines
+                -- the relationship direction.
+                ELSE format('%%I from %%s',
+                        other_role.rolname,
+                        string_agg(quote_ident(CASE WHEN grant_role.rolname::regrole = 10 THEN 'superuser' ELSE grant_role.rolname END) ||
+                            CASE WHEN (%7$L)::boolean -- admin cell output flag
+                                THEN ''
+                                ELSE ' (' || grant_instance.privs || ')'
+                            END, E'\n' || repeat(' ', length(other_role.rolname) + length(' from ') + CASE WHEN (%7$L)::boolean THEN 3 ELSE 0 END)
+                            ORDER BY grant_instance.level, grant_instance.grantor, grant_instance.grantor_path
+                        )
+                     )
+        END
+FROM
+    -- explode the unique arrays constructed in role_graph_detail, merge in some contextual data, then re-assemble as strings
+    -- NOTE: leaf_role is an outer context reference
+    unnest(leaf_role.%1$s) AS other
+
+    JOIN pg_catalog.pg_roles AS other_role ON other_role.oid = other.oid
+
+    -- Pick the row(s) from the graph based upon whether the leaf is supposed to be the container or member
+
+    -- Here we join in all relationships involved with all paths between the leaf node and each of the distinct
+    -- other nodes.  These relationships are what we will need to print within the single cell that this
+    -- scalar correlated (rows are individual leaf nodes) subquery produces.
+    JOIN role_relationship AS grant_instance ON grant_instance.%2$s = leaf_role.oid
+        AND grant_instance.%3$s = other.oid
+
+    JOIN pg_catalog.pg_roles AS grant_role ON grant_role.oid = grant_instance.grantor
+
+    -- Since the tip of the subtree (which is the rr row we are working on) is placed onto the via array the
+    -- second-to-last entry designates how we got here
+    -- If this doesn' result in a match we just assume we got here via direct grant which triggers the first
+    -- case branch output.
+    LEFT JOIN pg_catalog.pg_roles AS ancestor_role ON ancestor_role.oid = grant_instance.via[cardinality(grant_instance.via) - 1]
+
+-- we need a where clause to limit admin/non-admin
+%5$s
+
+GROUP BY
+    -- each endpoint membership that results from traversing the same path,
+    -- which happens when duplicate grants exist from different sources,
+    -- appears only once, the grantor at the root of each path
+    -- end up being listed in a comma-separated fashion within the grant printout line
+    -- with its specific privs provided next to it.
+    -- The underlying system promises to prevent loops.
+    other_role.rolname,
+    grant_instance.via
+
+$sub$;
+/*----------------------------------------------------------------------------------------*/
+role_graph := format(
+    $sub$
+        -- For each unique pathing between the leaf_node and one of its set member
+        -- produce a single output textual representation.  Mechanically, combine
+        -- the result of each array cell transformation into another array and then
+        -- print them all together in a single row using a newline separator.
+        -- (i.e., string_agg may have worked here but we are doing scalar subqueries
+        --  instead of group by).
+        -- Introduce an "Administration" column as well and print, using a slightly
+        -- different format, any links that involve ADMIN OPTION.
+        -- Additional labels can be added to this administration column as desired
+        -- (e.g., superuser, createrole).  Login is intentionally not shown as the
+        -- group/user classification communicates this fact.
+        CREATE VIEW role_graph AS
+            WITH cte_role_graph AS (
+                SELECT
+                    leaf_role.oid,
+                    leaf_role.role_type,
+                    leaf_role.rolname,
+                    leaf_role.rolsuper,
+                    array_to_string(ARRAY(
+                        SELECT
+                            *
+                        FROM (
+                            VALUES ('Superuser')) vals (v)
+                        WHERE
+                            leaf_role.rolsuper
+                        UNION ALL
+                        SELECT
+                            *
+                        FROM (
+                            VALUES ('Create Role')) vals (v)
+                        WHERE
+                            leaf_role.rolcreaterole
+                        UNION ALL
+                        %1$s
+                        UNION ALL
+                        %3$s
+                        UNION ALL
+                        %5$s
+                        UNION ALL
+                        %7$s
+                    ), E'\n') AS administration,
+                    array_to_string(ARRAY(%2$s), E'\n') AS %9$s,
+                    array_to_string(ARRAY(%4$s), E'\n') AS %10$s,
+                    array_to_string(ARRAY(%6$s), E'\n') AS %11$s,
+                    array_to_string(ARRAY(%8$s), E'\n') AS %12$s
+                FROM role_graph_detail AS leaf_role
+            )
+            SELECT
+                rolname, administration, %9$s, %10$s, %11$s, %12$s,
+                role_type, oid,
+                -- Groups, then Superuser, then Users, ties in name order except
+                -- superusers in oid order so the bootstrap superuser comes first.
+                -- Predefined groups also get listing priority
+                row_number() OVER (ORDER BY
+                    role_type,
+                    CASE WHEN rolsuper THEN oid::integer END ASC nulls LAST,
+                    CASE WHEN rolname ~ 'pg_' THEN 0 ELSE 1 END,
+                    rolname) AS seq
+            FROM
+                cte_role_graph
+            ORDER BY
+                seq;
+    $sub$,
+    format(role_graph_template, col_memberof_user, leaf_col_name, group_col_name, format(role_graph_prefix, 'of'), role_graph_where_admin, role_graph_having, true),
+    format(role_graph_template, col_memberof_user, leaf_col_name, group_col_name, '', role_graph_where_privs, '', false),
+    format(role_graph_template, col_memberof_group, leaf_col_name, group_col_name, format(role_graph_prefix, 'of'), role_graph_where_admin, role_graph_having, true),
+    format(role_graph_template, col_memberof_group, leaf_col_name, group_col_name, '', role_graph_where_privs, '', false),
+    format(role_graph_template, col_member_user, group_col_name, leaf_col_name, format(role_graph_prefix, 'by'), role_graph_where_admin, role_graph_having, true),
+    format(role_graph_template, col_member_user, group_col_name, leaf_col_name, '', role_graph_where_privs, '', false),
+    format(role_graph_template, col_member_group, group_col_name, leaf_col_name, format(role_graph_prefix, 'by'), role_graph_where_admin, role_graph_having, true),
+    format(role_graph_template, col_member_group, group_col_name, leaf_col_name, '', role_graph_where_privs, '', false),
+    col_memberof_user,
+    col_memberof_group,
+    col_member_user,
+    col_member_group
+);
+
+EXECUTE role_graph;
+
+END;
+$$;

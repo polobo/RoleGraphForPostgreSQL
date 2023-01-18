@@ -1,0 +1,12 @@
+                                             Test Result for 09-moe-the-manager-directly
+        rolname         |              administration              | memberof_users | memberof_groups | member_users | member_groups 
+------------------------+------------------------------------------+----------------+-----------------+--------------+---------------
+ g9a_service_manager_su | of g9b_service_advisor_su from superuser+|                |                 |              | 
+                        | by u9_moe_su from superuser              |                |                 |              | 
+ g9b_service_advisor_su | of g9c_service_tech_su from superuser   +|                |                 |              | 
+                        | by g9a_service_manager_su from superuser |                |                 |              | 
+ g9c_service_tech_su    | by g9b_service_advisor_su from superuser |                |                 |              | 
+ cr_admin               | Create Role                              |                |                 |              | 
+ u9_moe_su              | of g9a_service_manager_su from superuser |                |                 |              | 
+(5 rows)
+

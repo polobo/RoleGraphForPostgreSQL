@@ -1,0 +1,18 @@
+SET client_min_messages TO error;
+-- because the bootstrap superuser isn't the owner of many of these grants
+-- the system emits warnings but still removes the grant since the superuser asked.
+
+SELECT format('REVOKE %s FROM %s GRANTED BY %s CASCADE;', roleid::regrole, member::regrole, grantor::regrole)
+  FROM pg_auth_members
+ WHERE roleid::regrole::text ~ '^[ug]\d+' OR roleid::regrole::text = :'createrole_user_name'
+\gexec
+RESET client_min_messages;
+
+SELECT format('DROP ROLE %I;', rolname)
+  FROM pg_roles
+ WHERE -- roles created by test fixture scripts need to conform
+       -- to this pattern so they can be removed in bulk while
+       -- minimizing the risk of destroying non-test roles
+       -- should this end up being run against a live system.
+       rolname ~ '^[ug]\d+'
+\gexec

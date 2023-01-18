@@ -1,0 +1,13 @@
+---
+title: 07 - Monica the Manager Indirectly
+---
+graph TB
+    admin{Admin}
+    monica((Monica))
+    sm[Service Managers]
+    sa[Service Advisors]
+    st[Service Techs]
+    monica--S-->sm
+    sm--A, S-->sa
+    sa--S-->st
+    style admin fill:#FF6699,color:black

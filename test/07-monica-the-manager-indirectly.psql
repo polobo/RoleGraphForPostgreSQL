@@ -1,0 +1,12 @@
+-- Monica the Service Manager, can get Adminstration on Advisors
+-- but otherwise simply has standard grants to advisors and technicians.
+
+\if :is_su
+    SELECT format('CREATE USER u7_monica_%s NOINHERIT;', :'ctx') \gexec
+    SELECT format('CREATE GROUP g7a_service_manager_%s NOINHERIT;', :'ctx') \gexec
+    SELECT format('CREATE GROUP g7b_service_advisor_%s NOINHERIT;', :'ctx') \gexec
+    SELECT format('CREATE GROUP g7c_service_tech_%s NOINHERIT;', :'ctx') \gexec
+    SELECT format('GRANT g7a_service_manager_%1$s TO u7_monica_%1$s;', :'ctx') \gexec
+    SELECT format('GRANT g7b_service_advisor_%1$s TO g7a_service_manager_%1$s WITH ADMIN OPTION;', :'ctx') \gexec
+    SELECT format('GRANT g7c_service_tech_%1$s TO g7b_service_advisor_%1$s;', :'ctx') \gexec
+\endif

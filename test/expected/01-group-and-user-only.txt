@@ -1,0 +1,12 @@
+                                                                            Test Result for 01-group-and-user-only
+        rolname        |             administration              |         memberof_users          |              memberof_groups              |         member_users         | member_groups 
+-----------------------+-----------------------------------------+---------------------------------+-------------------------------------------+------------------------------+---------------
+ g1_service_advisor_cr | by cr_admin from superuser              |                                 |                                           | cr_admin from cr_admin (s,i) | 
+ g1_service_advisor_su |                                         |                                 |                                           |                              | 
+ cr_admin              | Create Role                            +| u1_alice_cr from cr_admin (s,i) | g1_service_advisor_cr from cr_admin (s,i) |                              | 
+                       | of u1_alice_cr from superuser          +|                                 |                                           |                              | 
+                       | of g1_service_advisor_cr from superuser |                                 |                                           |                              | 
+ u1_alice_cr           | by cr_admin from superuser              |                                 |                                           | cr_admin from cr_admin (s,i) | 
+ u1_alice_su           |                                         |                                 |                                           |                              | 
+(5 rows)
+

@@ -1,0 +1,17 @@
+---
+title: 05 - George the GM Broken Links
+---
+graph TB
+    admin{Admin}
+    george((George))
+    gm[General Managers]
+    fm[Fixed-Ops Managers]
+    sm[Service Managers]
+    sa[Service Advisors]
+    st[Service Techs]
+    george--S, I-->gm
+    gm--S-->fm
+    fm--I-->sm
+    sm--S-->sa
+    sa--I-->st
+    style admin fill:#FF6699,color:black
