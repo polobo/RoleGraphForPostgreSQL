@@ -1,0 +1,11 @@
+                                                                           Details for Test 02-alice-is-a-service-advisor
+  leaf_node  |      group_node       |  grantor  | level |              via_names              | privs_path |    grantor_path     | got_admin | got_set | got_inherit | got_inherit_via_set | privs 
+-------------+-----------------------+-----------+-------+-------------------------------------+------------+---------------------+-----------+---------+-------------+---------------------+-------
+ cr_admin    | g2_service_advisor_cr | cr_admin  |     1 | {g2_service_advisor_cr}             | {si}       | {cr_admin}          | f         | t       | t           | f                   | s,i
+ cr_admin    | g2_service_advisor_cr | superuser |     1 | {g2_service_advisor_cr}             | {a}        | {superuser}         | t         | f       | f           | f                   | n/a
+ cr_admin    | u2_alice_cr           | cr_admin  |     1 | {u2_alice_cr}                       | {si}       | {cr_admin}          | f         | t       | t           | f                   | s,i
+ cr_admin    | u2_alice_cr           | superuser |     1 | {u2_alice_cr}                       | {a}        | {superuser}         | t         | f       | f           | f                   | n/a
+ u2_alice_cr | g2_service_advisor_cr | cr_admin  |     1 | {g2_service_advisor_cr}             | {si}       | {cr_admin}          | f         | t       | t           | f                   | s,i
+ cr_admin    | g2_service_advisor_cr | cr_admin  |     2 | {u2_alice_cr,g2_service_advisor_cr} | {si,si}    | {cr_admin,cr_admin} | f         | t       | t           | f                   | s,i
+(6 rows)
+

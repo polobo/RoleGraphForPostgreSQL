@@ -1,0 +1,11 @@
+                                                                                        Details for Test 04-susan-advisor-and-tech
+       leaf_node        |       group_node       |  grantor  | level |                  via_names                   | privs_path |     grantor_path      | got_admin | got_set | got_inherit | got_inherit_via_set | privs 
+------------------------+------------------------+-----------+-------+----------------------------------------------+------------+-----------------------+-----------+---------+-------------+---------------------+-------
+ u4_susan_su            | g4b_service_advisor_su | superuser |     1 | {g4b_service_advisor_su}                     | {s}        | {superuser}           | f         | t       | f           | f                   | s
+ u4_susan_su            | g4c_service_tech_su    | superuser |     1 | {g4c_service_tech_su}                        | {i}        | {superuser}           | f         | f       | t           | f                   | i
+ g4a_service_manager_su | g4b_service_advisor_su | superuser |     1 | {g4b_service_advisor_su}                     | {si}       | {superuser}           | f         | t       | t           | f                   | s,i
+ g4b_service_advisor_su | g4c_service_tech_su    | superuser |     1 | {g4c_service_tech_su}                        | {ai}       | {superuser}           | t         | f       | t           | f                   | i
+ u4_susan_su            | g4c_service_tech_su    | superuser |     2 | {g4b_service_advisor_su,g4c_service_tech_su} | {s,ai}     | {superuser,superuser} | t         | f       | f           | t                   | i*
+ g4a_service_manager_su | g4c_service_tech_su    | superuser |     2 | {g4b_service_advisor_su,g4c_service_tech_su} | {si,ai}    | {superuser,superuser} | t         | f       | t           | f                   | i
+(6 rows)
+

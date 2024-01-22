@@ -1,0 +1,8 @@
+                                                                         Details for Test 09-moe-the-manager-directly
+       leaf_node        |       group_node       |  grantor  | level |        via_names         | privs_path | grantor_path | got_admin | got_set | got_inherit | got_inherit_via_set | privs 
+------------------------+------------------------+-----------+-------+--------------------------+------------+--------------+-----------+---------+-------------+---------------------+-------
+ u9_moe_su              | g9a_service_manager_su | superuser |     1 | {g9a_service_manager_su} | {a}        | {superuser}  | t         | f       | f           | f                   | n/a
+ g9a_service_manager_su | g9b_service_advisor_su | superuser |     1 | {g9b_service_advisor_su} | {a}        | {superuser}  | t         | f       | f           | f                   | n/a
+ g9b_service_advisor_su | g9c_service_tech_su    | superuser |     1 | {g9c_service_tech_su}    | {a}        | {superuser}  | t         | f       | f           | f                   | n/a
+(3 rows)
+

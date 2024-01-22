@@ -1,0 +1,9 @@
+                                                                    Details for Test 01-group-and-user-only
+ leaf_node |      group_node       |  grantor  | level |        via_names        | privs_path | grantor_path | got_admin | got_set | got_inherit | got_inherit_via_set | privs 
+-----------+-----------------------+-----------+-------+-------------------------+------------+--------------+-----------+---------+-------------+---------------------+-------
+ cr_admin  | g1_service_advisor_cr | cr_admin  |     1 | {g1_service_advisor_cr} | {si}       | {cr_admin}   | f         | t       | t           | f                   | s,i
+ cr_admin  | g1_service_advisor_cr | superuser |     1 | {g1_service_advisor_cr} | {a}        | {superuser}  | t         | f       | f           | f                   | n/a
+ cr_admin  | u1_alice_cr           | cr_admin  |     1 | {u1_alice_cr}           | {si}       | {cr_admin}   | f         | t       | t           | f                   | s,i
+ cr_admin  | u1_alice_cr           | superuser |     1 | {u1_alice_cr}           | {a}        | {superuser}  | t         | f       | f           | f                   | n/a
+(4 rows)
+

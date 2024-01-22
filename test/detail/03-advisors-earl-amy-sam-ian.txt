@@ -1,0 +1,11 @@
+                                                                    Details for Test 03-advisors-earl-amy-sam-ian
+    leaf_node    |      group_node       |  grantor  | level |        via_names        | privs_path | grantor_path | got_admin | got_set | got_inherit | got_inherit_via_set | privs 
+-----------------+-----------------------+-----------+-------+-------------------------+------------+--------------+-----------+---------+-------------+---------------------+-------
+ u3_earl_su      | g3_service_advisor_su | superuser |     1 | {g3_service_advisor_su} | {e}        | {superuser}  | f         | f       | f           | f                   | n/a
+ u3_ian_su       | g3_service_advisor_su | superuser |     1 | {g3_service_advisor_su} | {i}        | {superuser}  | f         | f       | t           | f                   | i
+ u3_sam_su       | g3_service_advisor_su | superuser |     1 | {g3_service_advisor_su} | {s}        | {superuser}  | f         | t       | f           | f                   | s
+ u3_amy_admin_su | g3_advisor_admin_su   | superuser |     1 | {g3_advisor_admin_su}   | {a}        | {superuser}  | t         | f       | f           | f                   | n/a
+ u3_ian_admin_su | g3_advisor_admin_su   | superuser |     1 | {g3_advisor_admin_su}   | {ai}       | {superuser}  | t         | f       | t           | f                   | i
+ u3_sam_admin_su | g3_advisor_admin_su   | superuser |     1 | {g3_advisor_admin_su}   | {as}       | {superuser}  | t         | t       | f           | f                   | s
+(6 rows)
+

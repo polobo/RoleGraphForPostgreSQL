@@ -1,0 +1,11 @@
+                                                                                                     Details for Test 07-monica-the-manager-indirectly
+       leaf_node        |       group_node       |  grantor  | level |                              via_names                              | privs_path |          grantor_path           | got_admin | got_set | got_inherit | got_inherit_via_set | privs 
+------------------------+------------------------+-----------+-------+---------------------------------------------------------------------+------------+---------------------------------+-----------+---------+-------------+---------------------+-------
+ u7_monica_su           | g7a_service_manager_su | superuser |     1 | {g7a_service_manager_su}                                            | {s}        | {superuser}                     | f         | t       | f           | f                   | s
+ g7a_service_manager_su | g7b_service_advisor_su | superuser |     1 | {g7b_service_advisor_su}                                            | {as}       | {superuser}                     | t         | t       | f           | f                   | s
+ g7b_service_advisor_su | g7c_service_tech_su    | superuser |     1 | {g7c_service_tech_su}                                               | {s}        | {superuser}                     | f         | t       | f           | f                   | s
+ u7_monica_su           | g7b_service_advisor_su | superuser |     2 | {g7a_service_manager_su,g7b_service_advisor_su}                     | {s,as}     | {superuser,superuser}           | t         | t       | f           | f                   | s
+ g7a_service_manager_su | g7c_service_tech_su    | superuser |     2 | {g7b_service_advisor_su,g7c_service_tech_su}                        | {as,s}     | {superuser,superuser}           | f         | t       | f           | f                   | s
+ u7_monica_su           | g7c_service_tech_su    | superuser |     3 | {g7a_service_manager_su,g7b_service_advisor_su,g7c_service_tech_su} | {s,as,s}   | {superuser,superuser,superuser} | f         | t       | f           | f                   | s
+(6 rows)
+

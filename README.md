@@ -32,7 +32,7 @@ is reachable via PATH.  Note, it also uses a custom `.psqlrc` file.
 Removes and reinstalls a schema named "rolegraph" and then executes
 a pl/pgsql DO block to create three views within it:
 
-- role_relationship (see `./test/details/` for examples)
+- role_relationship (see `./test/detail/` for examples)
 - role_graph_detail
 - role_graph (see `./test/expected/` for examples)
 
