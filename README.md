@@ -109,7 +109,7 @@ Submit an issue or meet me in the community (Slack, Discord, pgsql-general)
 
 ## Copyright
 
-David G. Johnston, 2023, All Rights Reserved
+David G. Johnston, 2023-2024, All Rights Reserved
 
 [My Homepage](https://david-g-johnston.com/)
 
