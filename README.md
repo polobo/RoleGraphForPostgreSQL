@@ -36,6 +36,8 @@ a pl/pgsql DO block to create three views within it:
 - role_graph_detail
 - role_graph (see `./test/expected/` for examples)
 
+This script can be run standalone for production installations. The test suite (`./test.bash`) will automatically run this if needed on a clean database.
+
 ## Considerations
 
 * The grant system of PostgreSQL does not permit cycles.
@@ -80,6 +82,8 @@ Installs git hooks (currently pre-commit whitespace checking) by creating symlin
 `./test.bash`
 
 The environment must be configured for psql to connect to a freshly installed cluster as the boostrap superuser.
+
+The test suite will automatically install the rolegraph schema and views if run on a clean database. Alternatively, you can run `./install.bash` manually first.
 
 Potentially destructive test runner that creates (and removes) roles
 from the cluster and then outputs role_graph view results into the `./test/output/`

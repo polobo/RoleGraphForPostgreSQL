@@ -14,8 +14,74 @@ DET_DIR="${TEST_DIR}"/detail
 DIFF_COUNT=0
 TEST_COUNT=0
 
+function check_prerequisites()
+{
+    echo "Checking prerequisites..."
+
+    # First check if the database is clean (no user roles, schemas, or objects)
+    # These checks must pass regardless of whether rolegraph is installed
+
+    # Check for unexpected user schemas (excluding system schemas and rolegraph)
+    local user_schemas
+    user_schemas=$(PSQLRC="${SELF_DIR}/.psqlrc" psql -qtAX -c "SELECT array_agg(nspname::text) FROM pg_namespace WHERE nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast', 'rolegraph') AND nspname !~ '^pg_temp' AND nspname !~ '^pg_toast_temp';")
+    if [[ "${user_schemas}" != "{public}" && "${user_schemas}" != "" ]]; then
+        echo "ERROR: Unexpected schemas found in database: ${user_schemas}"
+        echo "This test suite requires a fresh database with only the rolegraph schema installed."
+        echo "Please use a clean PostgreSQL instance or database."
+        exit 1
+    fi
+
+    # Check if public schema has any tables or views
+    local public_objects
+    public_objects=$(PSQLRC="${SELF_DIR}/.psqlrc" psql -qtAX -c "SELECT COUNT(*) FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE n.nspname = 'public' AND c.relkind IN ('r', 'v', 'm');")
+    if [[ "${public_objects}" != "0" ]]; then
+        echo "ERROR: Public schema contains tables or views."
+        echo "This test suite requires a fresh database with only the rolegraph schema installed."
+        echo "Please use a clean PostgreSQL instance or database."
+        exit 1
+    fi
+
+    # Check for existing roles (excluding bootstrap superuser and system roles)
+    local existing_roles
+    existing_roles=$(PSQLRC="${SELF_DIR}/.psqlrc" psql -qtAX -c "SELECT array_agg(rolname::text) FROM pg_roles WHERE rolname !~ '^pg_' AND oid != 10;")
+    if [[ "${existing_roles}" != "" && "${existing_roles}" != "{}" ]]; then
+        echo "ERROR: User roles already exist in database: ${existing_roles}"
+        echo "This test suite requires a completely fresh PostgreSQL cluster with no user-created roles."
+        echo "Please use a clean PostgreSQL instance or drop all existing roles."
+        exit 1
+    fi
+
+    # Now check if rolegraph schema exists - if clean but missing, auto-install
+    local schema_exists
+    schema_exists=$(PSQLRC="${SELF_DIR}/.psqlrc" psql -qtAX -c "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = 'rolegraph');")
+    if [[ "${schema_exists}" != "t" ]]; then
+        echo "✓ Database is clean but rolegraph schema not found"
+        echo "Running install.bash to set up required views..."
+        echo ""
+        if ! "${SELF_DIR}/install.bash"; then
+            echo ""
+            echo "ERROR: Installation failed"
+            exit 1
+        fi
+        echo ""
+    fi
+
+    # Check if required views exist
+    local views_exist
+    views_exist=$(PSQLRC="${SELF_DIR}/.psqlrc" psql -qtAX -c "SELECT COUNT(*) FROM pg_views WHERE schemaname = 'rolegraph' AND viewname IN ('role_relationship', 'role_graph', 'role_graph_detail');")
+    if [[ "${views_exist}" != "3" ]]; then
+        echo "ERROR: Required views not found in rolegraph schema."
+        echo "Expected: role_relationship, role_graph, role_graph_detail"
+        echo "Installation may have failed. Please check the output above."
+        exit 1
+    fi
+
+    echo "✓ Prerequisites check passed"
+}
+
 function main()
 {
+    check_prerequisites
     mkdir -p "${OUT_DIR}"
 
     while IFS= read -r -d '' filename
