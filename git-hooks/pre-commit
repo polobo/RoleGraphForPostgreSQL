@@ -1,0 +1,20 @@
+#!/bin/bash
+set -euo pipefail
+
+# Pre-commit hook: Check for whitespace errors
+# This hook prevents commits with trailing whitespace or other whitespace issues
+
+echo "Checking for whitespace errors..."
+
+if git diff --check --cached >/dev/null 2>&1; then
+  echo "✓ No whitespace errors found"
+  exit 0
+else
+  echo ""
+  echo "ERROR: Whitespace errors detected in staged changes:"
+  echo ""
+  git diff --check --cached
+  echo ""
+  echo "Fix these errors and try again."
+  exit 1
+fi

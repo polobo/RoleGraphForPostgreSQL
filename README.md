@@ -69,6 +69,14 @@ a pl/pgsql DO block to create three views within it:
 
 ## Development
 
+### Git Hooks
+
+`./install-hooks.bash`
+
+Installs git hooks (currently pre-commit whitespace checking) by creating symlinks from `git-hooks/` to `.git/hooks/`. This keeps hooks version-controlled while active in the repository.
+
+### Test Suite
+
 `./test.bash`
 
 The environment must be configured for psql to connect to a freshly installed cluster as the boostrap superuser.
